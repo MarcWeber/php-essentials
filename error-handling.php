@@ -46,9 +46,8 @@ function unexpected_failure($message, $trace){
   # make everything unexpected be an error and cause a trace by throwing an 
   # exception which is catched by either the exception implementation or by the 
   # shutdown handler finally
-  function ERROR_HANDLER(){
-	$args = func_get_args();
-	throw new Exception(var_export($args, true));
+  function ERROR_HANDLER($error_type, $error_msg, $error_file, $error_line, $error_context){
+	throw new Exception($error_type.' '.$error_msg);
   }
   set_error_handler('ERROR_HANDLER');
 }

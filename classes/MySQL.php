@@ -1,6 +1,6 @@
 <?php
 
-/* minimal printf like SQL construction quoting values supporting IN.
+/* minimal printf like SQL construction
  * usage:
  *
  * foreach( $db->queryAllRows('SELECT * FROM foo WHERE id > ? AND ?v', 10, new Verbatim("subquery")) as $row){
@@ -14,6 +14,9 @@
  * */
 
 class MySQL {
+
+  public $conn; // public is bad? but its more simple
+
   public function quoteNachTyp($v, $typ = ''){
     $quotingFunctions = array(
       's' => 'quoteString'
@@ -61,20 +64,20 @@ class MySQL {
     for ( $i = 1; $i < sizeof($matches[0]); $i++){
       if ($matches[2][$i] == ''){
 
-        $value = current($args); next($args);
+        $wert = current($args); next($args);
       } else { 
-        $value =& $args;
+        $wert =& $args;
         $keys = explode(':', substr($matches[2][$i],1));
         foreach( $keys as $k){
-          if ((!is_array($value)) || (!array_key_exists($k,$value)))
-            throw new Exception( 'SQL param error, param ['.implode($keys,',').'] was not found in '.print_r($args,true));
-          $value =& $value[$k];
+          if ((!is_array($wert)) || (!array_key_exists($k,$wert)))
+            throw new Exception( 'SQL Parameter Fehler, Parameter ['.implode($keys,',').'] nicht gefunden in '.print_r($args,true));
+          $wert =& $wert[$k];
         }
       }
       $type = substr($matches[1][$i], 1, 3);
-      $sql .= ( $value instanceof Verbatim
-        ? $value->toString()
-        : $this->quoteNachTyp( $value, $type ) )
+      $sql .= ( $wert instanceof Verbatim
+        ? $wert->toString()
+        : $this->quoteNachTyp( $wert, $type ) )
         . $matches[3][$i];
     }
     return $sql;
@@ -83,22 +86,33 @@ class MySQL {
 
   // runs mysql_query. Extra function so that time measurement can be added etc
   // @throws Exception
-  // you are responsible for freeing the result !
   public function query($sql){
-    // $time		= microtime(true); 
+    if ($debug = defined('DEBUG_MYSQL_QUERIES')){
+      global $mysql_queries, $db_total;
+      if (count($mysql_queries) >= 500)
+        $mysql_queries[501] = 'no more queries will be logged';
+      else
+        $mysql_queries[] = array('sql' => $sql, 'trace' => debug_backtrace());
+      $time		= microtime(true); 
+    }
+
     $db_result  = mysql_query($sql,$this->conn);
-    // $time_diff  = microtime(true) - $time;
-    // $db_total += $time_diff;
+
+    if ($debug){
+      $time_diff  = microtime(true) - $time;
+      $db_total += $time_diff;
+    }
+
     if ($db_result)
       return $db_result;
     else
-      throw new Exception(mysql_error($this->conn));
+      throw new Exception(mysql_error($this->conn)."\n query was: \n".$sql);
   }
 
   public function queryPrintf(){
     $args = func_get_args();
     $sql = call_user_func_array( array($this, 'printfLike'), $args );
-    return mysql_query($sql);
+    return $this->query($sql);
   }
 
   public function queryAllRows() {
@@ -115,45 +129,90 @@ class MySQL {
     $args = func_get_args();
     $r = call_user_func_array( array($this, 'queryPrintf'), $args );
     $row = mysql_fetch_assoc($r);
-    if (mysql_fetch_assoc($r))
+    if (mysql_fetch_assoc($r)){
+	  mysql_free_result($r);
       throw new Exception('only one row expected - got two');
+	}
 	mysql_free_result($r);
     return $row;
   }
 
+  public function queryOneValue() {
+    $args = func_get_args();
+    $r = call_user_func_array( array($this, 'queryPrintf'), $args );
+    $row = mysql_fetch_assoc($r);
+    if (mysql_fetch_assoc($r)){
+	  mysql_free_result($r);
+      throw new Exception('only one row expected - got two');
+	}
+	mysql_free_result($r);
+    return current($row);
+  }
+
+  public function queryFirstCol(){
+	$args = func_get_args();
+    
+	$re = array();
+	foreach( call_user_func_array( array($this, 'queryAllRows'), $args ) as $r){
+	  $re[] = current($r);
+	}
+	return $re;
+  }
 
   public function insert($tabelle, $values, $prefix= '', $alias = null){
-    $names = array(); $v_types = array();
+    $namen = array(); $v_types = array();
 
-    foreach( array_values($values) as $name => $t){
-      if (array_key_exists($prefix.$k,$values)){
-        $names[] = $this->quoteName($k); 
-        $v_types[] = $this->quoteSmart();
-      }
+    foreach( $values as $name => $t){
+      $namen[] = $this->quoteName($name); 
+      $v_values[] = $this->quoteSmart($t);
     }
 
-    $this->queryPrintf(' INSERT INTO '.$this->quoteName($tabelle).((is_null($alias)) ? '' : ' AS '.$this->quoteName($alias) )
-      .' ( '. implode($names, ', ').') VALUES ( '.implode($v_types,', ').')', $values);
+    $r = $this->queryPrintf(' INSERT INTO '.$this->quoteName($tabelle).((is_null($alias)) ? '' : ' AS '.$this->quoteName($alias) )
+      .' ( '. implode($namen, ', ').') VALUES ( '.implode($v_values,', ').')');
+	mysql_free_result($r);
     return mysql_insert_id($this->conn);
   }
+
+
+  public function insertMulti($tabelle, $list, $prefix= '', $alias = null){
+    $namen = array(); $v_types = array();
+
+    foreach( $list[0] as $name => $t){
+      $namen[] = $this->quoteName($name); 
+    }
+
+	foreach ($list as $row) {
+		
+	  $v_values = array();
+	  foreach( $row as $name => $t){
+		$v_values[] = $this->quoteSmart($t);
+	  }
+	  $rs[] = '('.implode($v_values,', ').')';
+	}
+
+	$this->queryPrintf(' INSERT INTO '.$this->quoteName($tabelle).((is_null($alias)) ? '' : ' AS '.$this->quoteName($alias) )
+	  .' ( '. implode($namen, ', ').') VALUES '.implode(',', $rs));
+    return mysql_insert_id($this->conn);
+  }
+
 
   public function update($tabelle, $values, $prefix= '', $alias = null){
     $felder = isset($this->tabellenUndFeldTypen[$tabelle])
       ? $this->tabellenUndFeldTypen[$tabelle]
       : ($felder = $this->tabellenUndFeldTypen[$tabelle] = $this->queryTabelleFeldTypen($tabelle));
 
-    $names = array(); $v_types = array(); $updates = array();
+    $namen = array(); $v_types = array(); $updates = array();
     foreach( $felder as $k => $t){
       if (array_key_exists($prefix.$k,$values)){
         $qn = $this->quoteName($k);
         $expr = $t.':1:'.$prefix.$k;
-        $names[] = $qn; 
+        $namen[] = $qn; 
         $v_types[] = $expr;
         $updates[] = $qn.'='.$expr;
       }
     }
     return $this->insert(' INSERT INTO '.$this->quoteName($tabelle).((is_null($alias)) ? '' : ' AS '.$this->quoteName($alias) )
-      .' ( '. implode($names, ', ').') VALUES ( '.implode($v_types,', ').')'
+      .' ( '. implode($namen, ', ').') VALUES ( '.implode($v_types,', ').')'
       .' ON DUPLICATE KEY UPDATE '.implode($updates,','),
         $werte);
   }
@@ -170,7 +229,7 @@ class MySQL {
     } elseif (is_null($in)) {
       return 'NULL';
     } else {
-      return "'" . $this->escapeSimple($in) . "'";
+      return $this->quoteString($in);
     }
   }
 
