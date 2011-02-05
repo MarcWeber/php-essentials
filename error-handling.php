@@ -55,6 +55,23 @@ function unexpected_failure($message, $trace){
 { # implementation fatal errors.
 
   function SHUTDOWN_FUNCTION() { 
+	if (defined('DEBUG_MYSQL_QUERIES')){
+	  global $mysql_queries, $db_total;
+	  echo "total mysql time ".(isset($db_total) ? $db_total : '')."\n";
+	  $count = 0;
+	  foreach ($mysql_queries as $a) {
+		if ($count ++ > 500){
+			echo "skipping more sql queries\n";
+			break;
+		}
+		echo "\n====================\n".$a['sql']."\n";
+		echo "aufgerufen in\n";
+		foreach ($a['trace'] as $t) {
+		  echo g($t,'file','').':'.g($t,'line','')."\n";
+		}
+	  }
+	}
+
 	$error = error_get_last(); 
 	if (!$error) return; // no error
 	/* 

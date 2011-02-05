@@ -15,7 +15,7 @@
 
 class MySQL {
 
-  public $conn; // public is bad? but its more simple
+  public $con; // public is bad? but its more simple
 
   public function quoteNachTyp($v, $typ = ''){
     $quotingFunctions = array(
@@ -96,7 +96,7 @@ class MySQL {
       $time		= microtime(true); 
     }
 
-    $db_result  = mysql_query($sql,$this->conn);
+    $db_result  = mysql_query($sql,$this->con);
 
     if ($debug){
       $time_diff  = microtime(true) - $time;
@@ -106,7 +106,7 @@ class MySQL {
     if ($db_result)
       return $db_result;
     else
-      throw new Exception(mysql_error($this->conn)."\n query was: \n".$sql);
+      throw new Exception(mysql_error($this->con)."\n query was: \n".$sql);
   }
 
   public function queryPrintf(){
@@ -170,7 +170,7 @@ class MySQL {
     $r = $this->queryPrintf(' INSERT INTO '.$this->quoteName($tabelle).((is_null($alias)) ? '' : ' AS '.$this->quoteName($alias) )
       .' ( '. implode($namen, ', ').') VALUES ( '.implode($v_values,', ').')');
 	mysql_free_result($r);
-    return mysql_insert_id($this->conn);
+    return mysql_insert_id($this->con);
   }
 
 
@@ -192,7 +192,7 @@ class MySQL {
 
 	$this->queryPrintf(' INSERT INTO '.$this->quoteName($tabelle).((is_null($alias)) ? '' : ' AS '.$this->quoteName($alias) )
 	  .' ( '. implode($namen, ', ').') VALUES '.implode(',', $rs));
-    return mysql_insert_id($this->conn);
+    return mysql_insert_id($this->con);
   }
 
 
