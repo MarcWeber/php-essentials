@@ -1,0 +1,2 @@
+minimal set of PHP error handling and MySQL abstraction making it much easier
+to write safe PHP code and be notified about any unexpected behaviour.
