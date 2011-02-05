@@ -13,6 +13,8 @@
  * license: LGPL
  * */
 
+class WrongRowCount extends Exception {}
+
 class MySQL {
 
   public $con; // public is bad? but its more simple
@@ -131,7 +133,7 @@ class MySQL {
     $row = mysql_fetch_assoc($r);
     if (mysql_fetch_assoc($r)){
 	  mysql_free_result($r);
-      throw new Exception('only one row expected - got two');
+      throw new WrongRowCount('only one row expected - got two');
 	}
 	mysql_free_result($r);
     return $row;
@@ -143,7 +145,7 @@ class MySQL {
     $row = mysql_fetch_assoc($r);
     if (mysql_fetch_assoc($r)){
 	  mysql_free_result($r);
-      throw new Exception('only one row expected - got two');
+      throw new WrongRowCount('only one row expected - got two');
 	}
 	mysql_free_result($r);
     return current($row);
@@ -159,7 +161,7 @@ class MySQL {
 	return $re;
   }
 
-  public function insert($tabelle, $values, $prefix= '', $alias = null){
+  protected function r_i($replace_or_insert, $tabelle, $values, $prefix= '', $alias = null){
     $namen = array(); $v_types = array();
 
     foreach( $values as $name => $t){
@@ -167,12 +169,18 @@ class MySQL {
       $v_values[] = $this->quoteSmart($t);
     }
 
-    $r = $this->queryPrintf(' INSERT INTO '.$this->quoteName($tabelle).((is_null($alias)) ? '' : ' AS '.$this->quoteName($alias) )
+    $r = $this->queryPrintf($replace_or_insert.'  INTO '.$this->quoteName($tabelle).((is_null($alias)) ? '' : ' AS '.$this->quoteName($alias) )
       .' ( '. implode($namen, ', ').') VALUES ( '.implode($v_values,', ').')');
-	mysql_free_result($r);
-    return mysql_insert_id($this->con);
+    return mysql_insert_id($this->conn);
   }
 
+  public function insert($tabelle, $values, $prefix= '', $alias = null){
+          return $this->r_i('INSERT', $tabelle, $values, $prefix= '', $alias = null);
+  }
+
+  public function replace($tabelle, $values, $prefix= '', $alias = null){
+          return $this->r_i('INSERT', $tabelle, $values, $prefix= '', $alias = null);
+  }
 
   public function insertMulti($tabelle, $list, $prefix= '', $alias = null){
     $namen = array(); $v_types = array();
