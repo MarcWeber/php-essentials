@@ -144,10 +144,13 @@ class MySQL {
     $r = call_user_func_array( array($this, 'queryPrintf'), $args );
     $row = mysql_fetch_assoc($r);
     if (mysql_fetch_assoc($r)){
-	  mysql_free_result($r);
+      mysql_free_result($r);
       throw new WrongRowCount('only one row expected - got two');
-	}
-	mysql_free_result($r);
+    }
+    mysql_free_result($r);
+    if (!$row){
+      throw new WrongRowCount('one row expected - none');
+    }
     return current($row);
   }
 
@@ -157,6 +160,17 @@ class MySQL {
 	$re = array();
 	foreach( call_user_func_array( array($this, 'queryAllRows'), $args ) as $r){
 	  $re[] = current($r);
+	}
+	return $re;
+  }
+
+  // usage: ->queryKeyValueArray('SELECT key as k, value as v FROM ... ')
+  public function queryKeyValueArray(){
+	$args = func_get_args();
+    
+	$re = array();
+	foreach( call_user_func_array( array($this, 'queryAllRows'), $args ) as $r){
+	  $re[$r['k']] = $r['v'];
 	}
 	return $re;
   }
@@ -203,26 +217,39 @@ class MySQL {
     return mysql_insert_id($this->con);
   }
 
-
-  public function update($tabelle, $values, $prefix= '', $alias = null){
-    $felder = isset($this->tabellenUndFeldTypen[$tabelle])
-      ? $this->tabellenUndFeldTypen[$tabelle]
-      : ($felder = $this->tabellenUndFeldTypen[$tabelle] = $this->queryTabelleFeldTypen($tabelle));
-
-    $namen = array(); $v_types = array(); $updates = array();
-    foreach( $felder as $k => $t){
-      if (array_key_exists($prefix.$k,$values)){
-        $qn = $this->quoteName($k);
-        $expr = $t.':1:'.$prefix.$k;
-        $namen[] = $qn; 
-        $v_types[] = $expr;
-        $updates[] = $qn.'='.$expr;
+  public function where($arr){
+      if (count($arr) == 0){
+          return "1=1";
+      } else {
+          $items = array();
+          foreach ($arr as $key => $v) {
+              $n = $this->quoteName($key);
+              if (is_null($v))
+                  $items[] = "$n IS NULL";
+              else $items[] = "$n = ".$this->quoteSmart($v);
+          }
+          return '('.implode(') AND (', $items).')';
       }
-    }
-    return $this->insert(' INSERT INTO '.$this->quoteName($tabelle).((is_null($alias)) ? '' : ' AS '.$this->quoteName($alias) )
-      .' ( '. implode($namen, ', ').') VALUES ( '.implode($v_types,', ').')'
-      .' ON DUPLICATE KEY UPDATE '.implode($updates,','),
-        $werte);
+  }
+
+  /*
+   * Example: UPDATE table SET field = value WHERE id = 1
+   * $db->update("table", array('field' => value), array('id' => 1))
+   */
+  public function update($tabelle, $values, $where_array){
+      $sets = array();
+      foreach ($values as $k => $v) {
+          $n = $this->quoteName($key);
+          if (is_null($v))
+              $sets[] = "$n = NULL";
+          else $sets[] = "$n = ".$this->quoteSmart($v);
+      }
+      $sql = "UPDATE ".$this->quoteName($tabelle)." SET ".implode(", ", $sets). " WHERE ".$this->where($where_array);
+      $this->query($sql);
+  }
+
+  public function delete($tabelle, $where_array){
+      $this->query("DELETE FROM ".$this->quoteName($tabelle)." WHERE ".$this->where($where_array));
   }
 
   public function quoteSmart($in){
@@ -236,6 +263,8 @@ class MySQL {
       return $this->quoteString($in);
     } elseif (is_null($in)) {
       return 'NULL';
+    } elseif (is_object($in)) {
+        return $in->toSQL();
     } else {
       return $this->quoteString($in);
     }

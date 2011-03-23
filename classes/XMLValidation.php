@@ -42,7 +42,7 @@ class XMLValidation {
                   for ($i = -7; $i < 5; $i++) {
                           $l = $el + $i - 3;
                           if ($i >= 0 && $i < count($lines))
-                                  $xmls .= ($l+1).': '.g($lines,$l,'')."\n";
+                                  $xmls .= ($l+1).': '.d($lines,$l,'')."\n";
                   }
   
                   $error_lines .= "\n".$xmls."\n";

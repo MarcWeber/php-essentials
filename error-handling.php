@@ -54,41 +54,51 @@ function unexpected_failure($message, $trace){
 
 { # implementation fatal errors.
 
-  function SHUTDOWN_FUNCTION() { 
-	if (defined('DEBUG_MYSQL_QUERIES')){
-	  global $mysql_queries, $db_total;
-	  echo "total mysql time ".(isset($db_total) ? $db_total : '')."\n";
-	  $count = 0;
-	  foreach ($mysql_queries as $a) {
-		if ($count ++ > 500){
-			echo "skipping more sql queries\n";
-			break;
-		}
-		echo "\n====================\n".$a['sql']."\n";
-		echo "aufgerufen in\n";
-		foreach ($a['trace'] as $t) {
-		  echo g($t,'file','').':'.g($t,'line','')."\n";
-		}
-	  }
-	}
+  function SHUTDOWN_FUNCTION() {
+    // if you don't wrap this you'll get "Exception with no stack frame .. good 
+    // luck then!"
+    try {
+      if (defined('DEBUG_MYSQL_QUERIES')){
+        global $mysql_queries, $db_total;
+        echo "total mysql time ".(isset($db_total) ? $db_total : '')."\n";
+        $count = 0;
+        if (is_array($mysql_queries))
+          foreach ($mysql_queries as $a) {
+            if ($count ++ > 500){
+              echo "skipping more sql queries\n";
+              break;
+            }
+            echo "\n====================\n".$a['sql']."\n";
+            echo "called in\n";
+            foreach ($a['trace'] as $t) {
+              echo g($t,'file','').':'.g($t,'line','')."\n";
+            }
+          }
+      }
 
-	$error = error_get_last(); 
-	if (!$error) return; // no error
-	/* 
-	   $error looks like this:
-	   array (
-		'type' => 1,
-		'message' => 'Call to undefined function foo()',
-		'file' => 'test.php',
-		'line' => 19
-		)
-	*/
-	try {
-	  unexpected_failure($error['type'].' '.$error['message'], array($error));
-	} catch (Exception $e) {
-	  # if formatting fails for whatever reason:
-	  unexpected_failure('? '.var_export($e,true).var_export($error, true), array());
-	}
+      $error = error_get_last(); 
+      if (!$error) return; // no error
+        /* 
+           $error looks like this:
+           array (
+                'type' => 1,
+                'message' => 'Call to undefined function foo()',
+                'file' => 'test.php',
+                'line' => 19
+                )
+         */
+      try {
+        unexpected_failure($error['type'].' '.$error['message'], array($error));
+      } catch (Exception $e) {
+        # if formatting fails for whatever reason:
+        unexpected_failure('? '.var_export($e,true).var_export($error, true), array());
+      }
+
+    } catch (Exception $e) {
+       var_dump($e); // show user
+       uncaught_exception($e);
+       exit(1);
+    }
   } 
   register_shutdown_function('SHUTDOWN_FUNCTION'); 
 
