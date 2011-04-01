@@ -22,7 +22,7 @@ foreach ($tables as $t) {
        $t1_f['values'] = $db->queryFirstCol('SELECT distinct '.$t1_f['Field'].' FROM '.$t);
        $t1_f['count'] = $db->queryOneValue('SELECT count(*) FROM '.$t);
      }
-  }
+  }unset($t1_f);
   $fs[] = $fields;
 }
 
