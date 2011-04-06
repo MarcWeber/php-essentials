@@ -185,7 +185,7 @@ class MySQL {
 
     $r = $this->queryPrintf($replace_or_insert.'  INTO '.$this->quoteName($tabelle).((is_null($alias)) ? '' : ' AS '.$this->quoteName($alias) )
       .' ( '. implode($namen, ', ').') VALUES ( '.implode($v_values,', ').')');
-    return mysql_insert_id($this->conn);
+    return mysql_insert_id($this->con);
   }
 
   public function insert($tabelle, $values, $prefix= '', $alias = null){
