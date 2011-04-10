@@ -70,6 +70,7 @@ class BBG{
             break;
             case '-':
                 $new_breite = $breite; $new_hoehe = $hoehe;
+            break;
             default:
                 throw new Exception("unbekanntes Bildgroesse!:".$target_size_typ);
         }
@@ -117,7 +118,7 @@ class BBG{
     static public function pic_from_post($file, $group, $id, $groesse = "---"){
         $ziel = BGG_PATH($group, $id, PIC_ORIGINAL_SIZE);
         $size = self::resizeImage($file['tmp_name'], $ziel, $groesse, false);
-        return "$id,{$size[0]},{$size[1]}";
+        return array($size[0],$size[1]);
     }
 
     // $id im Format "name,breite,höhe
