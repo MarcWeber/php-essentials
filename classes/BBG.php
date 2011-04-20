@@ -68,6 +68,13 @@ class BBG{
                 $new_hoehe = sqrt($target_size * $target_size / $breite * $hoehe);
                 $new_breite = round($new_hoehe * $breite / $hoehe);
             break;
+            case 'f':
+              list($w,$h) = explode('X', $target_size);
+              list($new_breite,$new_hoehe) = self::calc($breite, $hoehe, 'h-'.$h);
+              if ($new_breite > $w || $new_hoehe > $h){
+                list($new_breite,$new_hoehe) = self::calc($breite, $hoehe, 'w-'.$w);
+              }
+            break;
             case '-':
                 $new_breite = $breite; $new_hoehe = $hoehe;
             break;
@@ -83,6 +90,10 @@ class BBG{
         $size = getimagesize($image_path); // [0] = breite [1] = hoehe , ...
         list($b,$h) = self::calc($size[0], $size[1], $target_size);
 
+        $d = dirname($target_path);
+        if (!is_dir($d))
+          mkdir($d,'0755',true);
+
         if ( (!($b > $size[0] || $h > $size[1]))  // nicht grösser 
             || $also_enlarge
             || !in_array(pathinfo($image_path,PATHINFO_EXTENSION), array("jpg","jpeg")) // Bild kein jpeg 
@@ -93,7 +104,6 @@ class BBG{
             imagecopyresampled($img_dest, $img_orig, 0, 0, 0, 0, $b, $h, $size[0], $size[1]);
             // save
             imagejpeg($img_dest, $target_path, $jpg_quality);
-           file_put_contents($target,"test"); 
         } else {
             // eventually create symlink only to reduce storage size
             if ($symlink)
