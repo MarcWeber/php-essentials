@@ -1,5 +1,8 @@
 <?php
 
+# ! WARNING: Read http://randomdrake.com/2011/08/02/php-developers-finally-deprecating-extmysql-in-favor-of-mysqli-or-pdo/
+# probably all this code is outdated for that reason.
+
 /* minimal printf like SQL construction
  * usage:
  *
