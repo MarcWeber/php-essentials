@@ -1,53 +1,79 @@
-<?php 
+<?php
 
-# constructing HTML tags:
-# H::a(array('href' => '#'), htmlentities('foo'));
+// helper methods
 class H {
 
-  static public function render_tag_start(&$tag){
-    if ($tag['tag'] == 'input')
-      $tag['autoclose'] = true;
-    $s = '<';
-    $s .= $tag['tag'];
-    $s .= ' ';
-    foreach (d($tag, 'attributes', array()) as $key => $value) {
-      $s .= ' '.$key.'="'._htmlentities($value).'"';
+  static public function get_or(array $a, $k, $d = null){
+    return array_key_exists($k, $a) ? $a[$k] : $d;
+  }
+
+  static public function assert_not_null($x){
+    if (!is_null($x))
+      throw new Exception('thing is null');
+  }
+
+  static public function redirect_exit($url){
+    // Weiterleitung zur geschützten Startseite
+    if ($_SERVER['SERVER_PROTOCOL'] == 'HTTP/1.1') {
+      if (php_sapi_name() == 'cgi') {
+        header('Status: 303 See Other');
+      }
+      else {
+        header('HTTP/1.1 303 See Other');
+      }
     }
-    if (isset($tag['classes'])) {
-      $s .=' class="'._htmlentities(implode(' ', $tag['classes'])).'"';
+    header('Location: '.$url);
+    exit();
+  }
+
+  static public function url_params($gets){
+    return (count($gets) == 0)
+    ? ''
+    : '?'.implode('&', array_map(function($k)use(&$gets){return $k.'='.urlencode($gets[$k]);}, array_keys($gets)));
+  }
+
+
+  static public function esc_for_regex($s){
+    return preg_replace('/[\\/]/','\\/', $s);
+  }
+
+  static public function className($o){
+    $c = new ReflectionClass($o);
+    return $c->getName();
+  }
+
+  static public function js($js){
+    return '<script type="text/javascript">'.$js.'</script>';
+  }
+
+  // with some protection - probably it is hackable, but should take some
+  // effort and dedication
+  static public function serialize($o){
+    $s = base64_encode(serialize($o));
+    return md5($s.SERIALIZE_SALT).$s;
+  }
+  static public function unserialize($s){
+    $l = strlen(md5(''));
+    $code = substr($s, 0, $l);
+    $rest = substr($s, $l);
+    if ($code != md5($rest.SERIALIZE_SALT))
+      throw new Exception('bad');
+    return unserialize(base64_decode($rest));
+  }
+
+  static public function assert($b, $msg = ""){
+    if (!$b) throw new Exception( 'assertion failed' . $msg );
+  }
+
+  static public function replace_all($s, $ar){
+    foreach ($ar as $k => $v) {
+      $s = str_replace($k, $v, $s);
     }
-    $s .= d($tag, 'verbatim_attrs', '');
-    if (d($tag, 'autoclose', false))
-      $s .= '/';
-    return $s.'>';
+    return $s;
   }
 
-  static public function render_tag_end($tag){
-    if (d($tag, 'autoclose', false))
-      return;
-    return '</'.$tag['tag'].'>';
+  static public function defined_and_true($s){
+    return defined($s) && constant($s) === true;
   }
 
-  static public function render_tag($tag){
-    return self::render_tag_start($tag)
-      .d($tag, 'html', '')
-      .self::render_tag_end($tag);
-  }
-
-  static public function __callStatic($name, $args){
-    $tag = array(
-      'tag' => $name,
-      'attrs' => $args[0],
-      'html' => $args[1],
-    );
-    return self::render_tag($tag);
-  }
-
-  static public function menu_item($menu_item){
-    return self::li(array(), 
-      self::a(array('href' => '#'),
-        self::menu_title($menu_item)
-      )
-    );
-  }
 }
