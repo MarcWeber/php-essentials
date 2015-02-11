@@ -3,7 +3,7 @@
 class Google {
 
   static public function lat_lon($addr){
-    $url = 'http://maps.google.com/maps/api/geocode/json?address='.urlencode($addr).'&sensor=false&region=de';
+    $url = 'http://maps.google.com/maps/api/geocode/json?address='.rawurlencode($addr).'&sensor=false&region=de';
     $a = file_get_contents($url);
     $addr_info = json_decode($a, true);
 

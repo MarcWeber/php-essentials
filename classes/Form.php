@@ -54,7 +54,7 @@ class Form {
 
   public function __construct($opts = []){
     $this->opts = $opts;
-    A::ensure($this->opts, 'id', 'dummy');
+    $this->force_id();
     A::ensure($this->opts, 'tag_attributes', []);
     A::ensure($this->opts['tag_attributes'], 'id', $this->opts['id']);
     A::ensure($this->opts, 'name', $this->opts['id'].'_form_name');

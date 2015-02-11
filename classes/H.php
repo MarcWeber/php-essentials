@@ -29,7 +29,7 @@ class H {
   static public function url_params($gets){
     return (count($gets) == 0)
     ? ''
-    : '?'.implode('&', array_map(function($k)use(&$gets){return $k.'='.urlencode($gets[$k]);}, array_keys($gets)));
+    : '?'.implode('&', array_map(function($k)use(&$gets){return $k.'='.rawurlencode($gets[$k]);}, array_keys($gets)));
   }
 
 
@@ -44,6 +44,14 @@ class H {
 
   static public function js($js){
     return '<script type="text/javascript">'.$js.'</script>';
+  }
+
+  static public function css($css){
+    return '
+    <style type="text/css" media="all">
+    '.$css.'
+    </style>
+    ';
   }
 
   // with some protection - probably it is hackable, but should take some
