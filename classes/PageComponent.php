@@ -1,13 +1,12 @@
 <?php
-/*
-
-
- */
 
 trait PageComponent {
 
   static public function serve($params){ // params is params GET parameter from below
     list($class, $params) = H::unserialize($params);
+
+    if (array_key_exists('post_as_json', $_POST))
+      $_POST = json_decode($_POST['post_as_json'], true);
 
     $parent = new ReflectionClass($class);
     $ok = false;
@@ -23,10 +22,7 @@ trait PageComponent {
 
     $class = new $class($params);
 
-    A::ensure($this->opts, 'tag_attributes', []);
-    A::ensure($this->opts['tag_attributes'], 'id', $this->id);
-
-    return $class->page_component_ajax_reply();
+    return json_encode(['js' => $class->page_component_ajax_reply()]);
   }
 
   static public function url($class, $params){

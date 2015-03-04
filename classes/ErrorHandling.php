@@ -175,7 +175,7 @@ class ErrorHandling {
   static public function example_handle_unexpected_failure($o){
     $message = $o['message'];
     $trace = $o['trace'];
-    $silent = H::get_or($o, 'silent', false);
+    $silent = A::get_or($o, 'silent', false);
 
     $time = date(DATE_ATOM);
 
