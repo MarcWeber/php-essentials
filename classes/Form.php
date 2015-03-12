@@ -120,7 +120,9 @@ class Form {
         if ($value == 'Y')
           $tag_attributes['checked'] = 'checked';
         $html = Tag::input($tag_attributes);
+        break;
       default:
+        throw new Exception($type);
     }
     if (!isset($html))
       throw new Exception('TODO '.$type);
@@ -140,7 +142,7 @@ class Form {
   }
 
 
-  public function value_from_array(array $a, $opts){
+  public function value_from_array(array $a, $opts = []){
     $fields =& $this->opts['fields'];
     $dv = A::get_or($opts, 'drop_values', true);
     foreach ($fields as $name => $field){
@@ -198,7 +200,7 @@ class Form {
                 $set_field_error(__('must be given'));
               break;
             case 'check_email_or_empty':
-              if (!preg_match('/^(.+)@(.+)$/', $value))
+              if (!preg_match('/^[^0-9][a-zA-Z0-9_]+([.][a-zA-Z0-9_]+)*[@][a-zA-Z0-9_]+([.][a-zA-Z0-9_]+)*[.][a-zA-Z]{2,4}$/', $value))
                 $set_field_error(__('must be an email'));
               break;
             case 'check_must_be_Y':
